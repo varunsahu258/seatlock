@@ -6,7 +6,7 @@
 
 A flash-sale reservation backend that turns a stampede into exactly one durable winner per seat.
 
-[![CI](https://github.com/YOUR-USERNAME/seatlock/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-USERNAME/seatlock/actions/workflows/ci.yml)
+[![CI](https://github.com/varunsahu258/seatlock/actions/workflows/ci.yml/badge.svg)](https://github.com/varunsahu258/seatlock/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
