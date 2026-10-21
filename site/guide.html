@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Seatlock · System guide</title><link rel="stylesheet" href="style.css"></head>
+<body><main class="shell">
+  <nav class="topbar"><a class="brand" href="./">SEATLOCK<span> / SYSTEMS LAB</span></a><a class="back" href="api.html">API REFERENCE →</a></nav>
+  <header class="page-head"><div><p class="eyebrow">04 / HOW IT WORKS</p><h1>Temporary claims.<br><em>Durable truth.</em></h1><p>A short tour of how Seatlock moves a seat from the waiting room to an auditable booking.</p></div></header>
+  <section class="link-grid guide-steps">
+    <article><b>01 / JOIN</b><span>A queue-enabled show assigns each user a stable FIFO token. The Redis admitter grants access at the show's configured rate.</span></article>
+    <article><b>02 / HOLD</b><span>The owner gets a five-minute Redis hold. A Lua script checks admission, rate, seat ownership, and the six-seat limit atomically.</span></article>
+    <article><b>03 / CONFIRM</b><span>Postgres commits bookings and pending payment intents together. A partial unique index prevents a second active booking for a seat.</span></article>
+    <article><b>04 / SETTLE</b><span>A signed provider event makes the booking paid or cancelled. Replayed event IDs have no side effects; cleanup cancels stale unpaid bookings.</span></article>
+  </section>
+  <section class="panel"><div class="panel-title"><span>WHO OWNS WHICH STATE?</span><span class="mono">TWO STORES · CLEAR BOUNDARIES</span></div><div class="chart-grid" style="margin-top:15px">
+    <article class="chart"><h3>REDIS · SHORT-LIVED COORDINATION</h3><ul><li>Seat holds with 300-second expiry</li><li>Per-user held-seat membership</li><li>FIFO queue and admission tokens</li><li>Atomic Lua token buckets</li><li>Owner-bound compare-and-delete</li></ul></article>
+    <article class="chart"><h3>POSTGRES · DURABLE RECORDS</h3><ul><li>Events, shows, and seats</li><li>Confirmed, paid, and cancelled bookings</li><li>Pending intents and provider webhook events</li><li>Partial unique index for active seat occupancy</li><li>Row-locked, multi-worker cleanup</li></ul></article>
+  </div></section>
+  <section class="panel"><div class="panel-title"><span>INVARIANTS TO KEEP INTACT</span><span class="mono">SAFETY FIRST</span></div><div class="chart-grid" style="margin-top:15px">
+    <article class="chart"><h3>ONE ACTIVE BOOKING PER SEAT</h3><p class="chart-note">Redis holds reduce contention, but the database unique index is the final arbiter. Cancelled history remains while the seat becomes available again.</p></article>
+    <article class="chart"><h3>ONLY THE OWNER RELEASES</h3><p class="chart-note">The compare and delete happen inside Lua. An old owner cannot delete a new hold after their original TTL expires.</p></article>
+    <article class="chart"><h3>ONE EFFECT PER PROVIDER EVENT</h3><p class="chart-note">Provider event IDs are unique. Event insertion and booking transition share a transaction that locks the booking row.</p></article>
+    <article class="chart"><h3>WORKERS CLAIM DISJOINT ROWS</h3><p class="chart-note">`FOR UPDATE SKIP LOCKED` lets cleanup workers cancel separate batches without duplicating work or waiting on a claimed row.</p></article>
+  </div></section>
+  <section class="link-grid"><a href="replay.html"><b>WATCH THE RUN →</b><span>Replay sampled hold wins and rejected attempts.</span></a><a href="results.html"><b>READ THE METRICS →</b><span>Latency, throughput, sale totals, and verified invariants.</span></a><a href="api.html"><b>EXPLORE THE API →</b><span>Endpoint contracts and request examples in Redoc.</span></a></section>
+  <footer>Seatlock systems guide<span><a href="./">HOME →</a></span></footer>
+</main></body></html>

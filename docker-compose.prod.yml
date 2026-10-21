@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seatlock
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: seatlock
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seatlock -d seatlock"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [internal]
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment: &app-environment
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://seatlock:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/seatlock
+      REDIS_URL: redis://redis:6379/0
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:?Set PAYMENT_WEBHOOK_SECRET in .env}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in .env}
+      HOLD_TTL_SECONDS: ${HOLD_TTL_SECONDS:-300}
+      HOLD_RATE_CAPACITY: ${HOLD_RATE_CAPACITY:-20}
+      HOLD_RATE_PER_SECOND: ${HOLD_RATE_PER_SECOND:-10}
+      QUEUE_JOIN_RATE_CAPACITY: ${QUEUE_JOIN_RATE_CAPACITY:-5}
+      QUEUE_JOIN_RATE_PER_SECOND: ${QUEUE_JOIN_RATE_PER_SECOND:-2}
+      ADMISSION_TTL_SECONDS: ${ADMISSION_TTL_SECONDS:-600}
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [internal]
+
+  admitter:
+    build: .
+    restart: unless-stopped
+    environment: *app-environment
+    command: ["python", "-m", "app.workers.admitter"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      api: {condition: service_healthy}
+    networks: [internal]
+
+  cleanup:
+    build: .
+    restart: unless-stopped
+    environment: *app-environment
+    command: ["python", "-m", "app.workers.cleanup"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      api: {condition: service_healthy}
+    networks: [internal]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN to the public hostname in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api: {condition: service_healthy}
+    networks: [internal]
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:

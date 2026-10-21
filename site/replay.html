@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Seatlock · Replay</title><link rel="stylesheet" href="style.css"></head>
+<body><main class="shell">
+  <nav class="topbar"><a class="brand" href="./">SEATLOCK<span> / SYSTEMS LAB</span></a><a class="back" href="./">← HOME</a></nav>
+  <header class="page-head"><div><p class="eyebrow">01 / FLASH SALE REPLAY</p><h1>One seat, one winner.</h1><p>Sampled hold outcomes from the k6 rush. Green means the hold won; coral means the seat was already held or booked.</p></div><div><div class="eyebrow">DATABASE INVARIANT</div><div class="hero-metric">double bookings: <span id="double-bookings">0</span></div></div></header>
+  <section class="panel">
+    <div class="panel-title"><span id="event-progress">Loading run…</span><div class="controls"><button id="play">▶ Play</button><button class="secondary" id="reset">↺ Reset</button><label class="mono" for="speed">SPEED</label><input id="speed" type="range" min="1" max="20" value="5"><span id="speed-label" class="mono">5×</span></div></div>
+    <div class="progress"><span id="timeline-progress"></span></div>
+    <div id="seats" class="seat-grid" aria-label="500 seat map"></div>
+    <div id="seat-count" class="seat-count">0 / 500 seats won</div>
+    <div class="legend"><span class="won"><i></i>WINNER</span><span class="nope"><i></i>REJECTED ATTEMPT</span><span><i></i>UNCLAIMED</span></div>
+  </section>
+  <section class="panel"><div class="panel-title"><span>RECENT OUTCOMES</span><span id="event-total">0 EVENTS</span></div><div id="event-list" class="event-list"></div></section>
+  <footer>Sampled timeline · event data from <a href="events.json">events.json</a><span><a href="results.html">BENCHMARK →</a></span></footer>
+</main>
+<script>
+const seatTotal=500;const seatRoot=document.querySelector('#seats');const eventList=document.querySelector('#event-list');const playButton=document.querySelector('#play');const speed=document.querySelector('#speed');const span=document.querySelector('#timeline-progress');
+const seatElements=Array.from({length:seatTotal},(_,i)=>{const node=document.createElement('div');node.className='seat';node.title=`Seat ${i+1}: unclaimed`;seatRoot.append(node);return node});
+let events=[],cursor=0,timer=null,baseTime=0,won=new Set(),winnerCounts=new Map();
+function reset(){if(timer)clearTimeout(timer);timer=null;cursor=0;baseTime=0;won=new Set();winnerCounts=new Map();seatElements.forEach((seat,i)=>{seat.className='seat';seat.title=`Seat ${i+1}: unclaimed`});eventList.replaceChildren();span.style.width='0';document.querySelector('#seat-count').textContent='0 / 500 seats won';document.querySelector('#double-bookings').textContent='0';document.querySelector('#event-progress').textContent='READY · 0 / '+events.length;playButton.textContent='▶ Play'}
+function step(){if(cursor>=events.length){timer=null;playButton.textContent='↻ Replay';return}const event=events[cursor++],seat=seatElements[event.seat-1];if(seat){if(event.outcome==='winner'){const count=(winnerCounts.get(event.seat)||0)+1;winnerCounts.set(event.seat,count);won.add(event.seat);seat.className='seat winner';seat.title=`Seat ${event.seat}: winner`;document.querySelector('#seat-count').textContent=`${won.size} / ${seatTotal} seats won`;document.querySelector('#double-bookings').textContent=String([...winnerCounts.values()].reduce((sum,n)=>sum+Math.max(0,n-1),0))}else if(!won.has(event.seat)){seat.classList.remove('rejected');void seat.offsetWidth;seat.classList.add('rejected');seat.title=`Seat ${event.seat}: rejected attempt`;setTimeout(()=>{if(!won.has(event.seat)){seat.classList.remove('rejected');seat.title=`Seat ${event.seat}: unclaimed`}},650)}}
+const row=document.createElement('div');row.className=event.outcome==='winner'?'winner-text':'reject-text';row.textContent=`+${(event.t/1000).toFixed(1)}s  SEAT ${String(event.seat).padStart(3,'0')}  ${event.outcome==='winner'?'HOLD WON':'REJECTED'}`;eventList.prepend(row);while(eventList.children.length>30)eventList.lastChild.remove();document.querySelector('#event-progress').textContent=`PLAYING · ${cursor} / ${events.length}`;span.style.width=`${events.length?cursor/events.length*100:0}%`;timer=setTimeout(step,Math.max(35,(event.t-(events[cursor-2]?.t||0))/Number(speed.value)))}
+function toggle(){if(timer){clearTimeout(timer);timer=null;playButton.textContent='▶ Continue';return}if(cursor>=events.length)reset();playButton.textContent='Ⅱ Pause';step()}
+playButton.addEventListener('click',toggle);document.querySelector('#reset').addEventListener('click',reset);speed.addEventListener('input',()=>document.querySelector('#speed-label').textContent=`${speed.value}×`);
+fetch('./events.json').then(r=>{if(!r.ok)throw Error('Could not load events.json');return r.json()}).then(data=>{events=data.filter(e=>Number.isFinite(e.t)&&Number.isFinite(e.seat)&&['winner','rejected'].includes(e.outcome)).sort((a,b)=>a.t-b.t);document.querySelector('#event-total').textContent=`${events.length.toLocaleString()} EVENTS`;reset();if(!events.length)document.querySelector('#event-progress').textContent='NO EVENTS · RUN THE LOAD TEST TO RECORD A REPLAY'}).catch(error=>{document.querySelector('#event-progress').textContent=error.message});
+</script></body></html>

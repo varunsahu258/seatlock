@@ -1,0 +1,26 @@
+{
+  "run_at_utc": "2026-10-18T15:02:56.295349+00:00",
+  "show_id": 21,
+  "seat_capacity": 500,
+  "confirmed_bookings": 500,
+  "number_sold": 500,
+  "double_bookings": 0,
+  "invariants": {
+    "double_bookings": 0,
+    "confirmed_bookings_over_capacity": false,
+    "missing_payment_or_valid_hold_booking_ids": []
+  },
+  "latency": {
+    "p50_latency_ms": 2637.169,
+    "p95_latency_ms": 30029.97665,
+    "p99_latency_ms": 30855.06503,
+    "throughput_requests_per_second": 498.8127830023502,
+    "http_request_count": 60222,
+    "confirmed_flows": 500,
+    "seat_contention": 35144,
+    "flow_failures": 3316,
+    "http_request_failure_rate_percent": 65.02607020690114
+  },
+  "hardware": "Darwin 25.5.0, arm64, 8 logical CPUs, 8.0 GiB RAM; k6 capped at GOMAXPROCS=2; Docker Desktop allocated 4 CPUs/3.8 GiB; API and generator on the same Mac",
+  "k6_command": "GOMAXPROCS=2 k6 run --summary-export=loadtest/k6-summary-21.json --env BASE_URL=http://127.0.0.1:8000 --env SHOW_ID=21 --env VUS=10000 --env PAYMENT_WEBHOOK_SECRET=<configured> loadtest/flash_sale.js"
+}

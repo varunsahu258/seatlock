@@ -1,0 +1,1089 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Seatlock API",
+    "description": "A flash-sale seat reservation demo. Redis owns short-lived holds and queue state; PostgreSQL owns durable booking and payment state. Use `X-User-Id` to identify a caller in this development build. Queue-enabled shows also require the owner's `X-Admission-Token` on booking actions.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/shows/{show_id}/queue/join": {
+      "post": {
+        "tags": [
+          "queue"
+        ],
+        "summary": "Join the waiting room",
+        "description": "Returns the caller's stable queue token, current position, and estimated wait. Repeated joins for a user reuse their token; the endpoint is token-bucket rate limited.",
+        "operationId": "join_queue_shows__show_id__queue_join_post",
+        "parameters": [
+          {
+            "name": "show_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Show Id"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueJoinRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shows/{show_id}/queue/status": {
+      "get": {
+        "tags": [
+          "queue"
+        ],
+        "summary": "Read queue position or admission",
+        "description": "Checks a queue token for the caller identified by `X-User-Id`. Once admitted, send this token as `X-Admission-Token` to hold, confirm, and pay.",
+        "operationId": "queue_status_shows__show_id__queue_status_get",
+        "parameters": [
+          {
+            "name": "show_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Show Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueStatusRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shows/{show_id}/seats": {
+      "get": {
+        "tags": [
+          "shows"
+        ],
+        "summary": "Get the live seat map",
+        "description": "Returns every seat and merges PostgreSQL active bookings with live Redis holds. `booked` takes precedence over `held`.",
+        "operationId": "get_seats_shows__show_id__seats_get",
+        "parameters": [
+          {
+            "name": "show_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Show Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeatRead"
+                  },
+                  "title": "Response Get Seats Shows  Show Id  Seats Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shows/{show_id}/seats/{seat_id}/hold": {
+      "post": {
+        "tags": [
+          "holds"
+        ],
+        "summary": "Hold a seat for five minutes",
+        "description": "Acquires an unheld seat with one atomic Redis script. Caller may hold at most six seats per show. Queue-enabled shows require the owner's admission token.",
+        "operationId": "hold_seat_shows__show_id__seats__seat_id__hold_post",
+        "parameters": [
+          {
+            "name": "show_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Show Id"
+            }
+          },
+          {
+            "name": "seat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Seat Id"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-User-Id"
+            }
+          },
+          {
+            "name": "X-Admission-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admission-Token"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HoldRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bookings/confirm": {
+      "post": {
+        "tags": [
+          "bookings"
+        ],
+        "summary": "Confirm held seats",
+        "description": "Requires caller-owned, unexpired holds for every requested seat. Creates bookings and pending payment intents in one PostgreSQL transaction, relies on the active-seat unique index, then removes the holds.",
+        "operationId": "confirm_booking_bookings_confirm_post",
+        "parameters": [
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-User-Id"
+            }
+          },
+          {
+            "name": "X-Admission-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admission-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookingConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingRead"
+                  },
+                  "title": "Response Confirm Booking Bookings Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/holds/{seat_id}/release": {
+      "post": {
+        "tags": [
+          "holds"
+        ],
+        "summary": "Release a seat hold",
+        "description": "Only the hold owner can release it. Compare-and-delete runs atomically in Redis so a stale owner cannot delete a newer hold.",
+        "operationId": "release_hold_holds__seat_id__release_post",
+        "parameters": [
+          {
+            "name": "seat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Seat Id"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldRelease"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bookings/{booking_id}/pay": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Create or return a payment intent",
+        "description": "Returns the caller's pending payment intent for a confirmed booking. Booking confirmation normally creates the intent atomically already.",
+        "operationId": "create_payment_intent_bookings__booking_id__pay_post",
+        "parameters": [
+          {
+            "name": "booking_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Booking Id"
+            }
+          },
+          {
+            "name": "X-User-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-User-Id"
+            }
+          },
+          {
+            "name": "X-Admission-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admission-Token"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentIntentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/payment": {
+      "post": {
+        "tags": [
+          "payments"
+        ],
+        "summary": "Process a signed payment event",
+        "description": "Verifies HMAC-SHA256 over the exact raw request body using `X-Payment-Signature`. Provider event IDs are unique; duplicates have no state-changing effects. The first terminal outcome wins.",
+        "operationId": "payment_webhook_webhooks_payment_post",
+        "parameters": [
+          {
+            "name": "X-Payment-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Payment-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentWebhookRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Check API and dependency readiness",
+        "description": "Returns `ok` only when PostgreSQL and Redis answer a lightweight health query.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/events": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create an event",
+        "description": "Creates a parent event record. This setup endpoint is intentionally unauthenticated in the demo.",
+        "operationId": "create_event_admin_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/shows": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create a show and its seats",
+        "description": "Creates a show plus `seat_count` numbered seats in one database transaction. Set `queue_enabled` to require waiting-room admission.",
+        "operationId": "create_show_admin_shows_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShowCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BookingConfirm": {
+        "properties": {
+          "show_id": {
+            "type": "integer",
+            "title": "Show Id"
+          },
+          "seat_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Seat Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "show_id",
+          "seat_ids"
+        ],
+        "title": "BookingConfirm",
+        "description": "Confirm one to six caller-owned seat holds for one show.",
+        "examples": [
+          {
+            "seat_ids": [
+              101,
+              102
+            ],
+            "show_id": 12
+          }
+        ]
+      },
+      "BookingRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "show_id": {
+            "type": "integer",
+            "title": "Show Id"
+          },
+          "seat_id": {
+            "type": "integer",
+            "title": "Seat Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "confirmed",
+            "title": "Status"
+          },
+          "payment_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Ref"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "show_id",
+          "seat_id",
+          "user_id",
+          "status",
+          "payment_ref",
+          "created_at"
+        ],
+        "title": "BookingRead"
+      },
+      "EventCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "EventCreate",
+        "description": "Admin-created event used to group shows.",
+        "examples": [
+          {
+            "name": "Summer festival"
+          }
+        ]
+      },
+      "EventRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "EventRead"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthRead": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthRead"
+      },
+      "HoldRead": {
+        "properties": {
+          "show_id": {
+            "type": "integer",
+            "title": "Show Id"
+          },
+          "seat_id": {
+            "type": "integer",
+            "title": "Seat Id"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "show_id",
+          "seat_id",
+          "expires_at"
+        ],
+        "title": "HoldRead"
+      },
+      "HoldRelease": {
+        "properties": {
+          "show_id": {
+            "type": "integer",
+            "title": "Show Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "show_id"
+        ],
+        "title": "HoldRelease",
+        "description": "Identifies which show the path seat belongs to.",
+        "examples": [
+          {
+            "show_id": 12
+          }
+        ]
+      },
+      "PaymentIntentRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "booking_id": {
+            "type": "integer",
+            "title": "Booking Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "pending",
+            "title": "Status"
+          },
+          "payment_ref": {
+            "type": "string",
+            "title": "Payment Ref"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "booking_id",
+          "status",
+          "payment_ref"
+        ],
+        "title": "PaymentIntentRead"
+      },
+      "PaymentWebhookRead": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "processed",
+              "duplicate"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "PaymentWebhookRead"
+      },
+      "QueueJoinRead": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "admitted": {
+            "type": "boolean",
+            "title": "Admitted"
+          },
+          "estimated_wait_seconds": {
+            "type": "integer",
+            "title": "Estimated Wait Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "position",
+          "admitted",
+          "estimated_wait_seconds"
+        ],
+        "title": "QueueJoinRead"
+      },
+      "QueueStatusRead": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "admitted": {
+            "type": "boolean",
+            "title": "Admitted"
+          },
+          "estimated_wait_seconds": {
+            "type": "integer",
+            "title": "Estimated Wait Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "position",
+          "admitted",
+          "estimated_wait_seconds"
+        ],
+        "title": "QueueStatusRead"
+      },
+      "SeatRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "price_minor": {
+            "type": "integer",
+            "title": "Price Minor"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "held",
+              "booked"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "price_minor",
+          "status"
+        ],
+        "title": "SeatRead"
+      },
+      "ShowCreate": {
+        "properties": {
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "seat_count": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Seat Count"
+          },
+          "seat_price_minor": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Seat Price Minor"
+          },
+          "queue_enabled": {
+            "type": "boolean",
+            "title": "Queue Enabled",
+            "default": false
+          },
+          "queue_admit_per_second": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Queue Admit Per Second",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "starts_at",
+          "seat_count",
+          "seat_price_minor"
+        ],
+        "title": "ShowCreate",
+        "description": "Create a show and a numbered block of seats.",
+        "examples": [
+          {
+            "event_id": 1,
+            "queue_admit_per_second": 100,
+            "queue_enabled": true,
+            "seat_count": 500,
+            "seat_price_minor": 2500,
+            "starts_at": "2030-06-01T19:30:00Z"
+          }
+        ]
+      },
+      "ShowRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "event_id": {
+            "type": "integer",
+            "title": "Event Id"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starts At"
+          },
+          "seat_count": {
+            "type": "integer",
+            "title": "Seat Count"
+          },
+          "queue_enabled": {
+            "type": "boolean",
+            "title": "Queue Enabled",
+            "default": false
+          },
+          "queue_admit_per_second": {
+            "type": "integer",
+            "title": "Queue Admit Per Second",
+            "default": 10
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_id",
+          "starts_at",
+          "seat_count"
+        ],
+        "title": "ShowRead"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "admin",
+      "description": "Unauthenticated development endpoints for event and show setup."
+    },
+    {
+      "name": "shows",
+      "description": "Seat inventory and the merged live seat map."
+    },
+    {
+      "name": "queue",
+      "description": "FIFO waiting-room join and owner-bound admission status."
+    },
+    {
+      "name": "holds",
+      "description": "Temporary seat reservations with ownership and expiry."
+    },
+    {
+      "name": "bookings",
+      "description": "Atomic confirmation of caller-owned seat holds."
+    },
+    {
+      "name": "payments",
+      "description": "Simulated payment intents and signed provider callbacks."
+    },
+    {
+      "name": "health",
+      "description": "Dependency readiness check."
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101713">
+  <title>Seatlock · Flash sale systems demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="shell">
+    <nav class="topbar"><a class="brand" href="./">SEATLOCK<span> / SYSTEMS LAB</span></a><span class="live"><i></i> BENCHMARK VERIFIED</span></nav>
+    <section class="hero">
+      <p class="eyebrow">DISTRIBUTED SYSTEMS · FLASH SALE SIMULATION</p>
+      <h1>High demand.<br><em>One seat per winner.</em></h1>
+      <p class="lede">A replayable look at a 10,000-user rush for 500 seats, backed by Redis holds and PostgreSQL booking guarantees.</p>
+      <div class="hero-actions"><a class="button primary" href="replay.html">▶ Play the replay</a><a class="button" href="results.html">View benchmark →</a></div>
+    </section>
+    <section class="stat-row">
+      <article class="stat"><span class="eyebrow">USERS SIMULATED</span><strong>10,000</strong><small>k6 virtual users</small></article>
+      <article class="stat"><span class="eyebrow">SEATS AVAILABLE</span><strong>500</strong><small>one flash-sale show</small></article>
+      <article class="stat accent-stat"><span class="eyebrow">DOUBLE BOOKINGS</span><strong>0</strong><small>database invariant held</small></article>
+    </section>
+    <section class="link-grid">
+      <a href="replay.html"><b>01 / Seat replay</b><span>Watch sampled winners and rejected attempts unfold.</span></a>
+      <a href="results.html"><b>02 / Results</b><span>Latency, throughput and sale completion from the run.</span></a>
+      <a href="api.html"><b>03 / API reference</b><span>Redoc documentation generated from OpenAPI.</span></a>
+      <a href="guide.html"><b>04 / How it works</b><span>Follow state through the queue, hold, booking, and payment lifecycle.</span></a>
+    </section>
+    <footer>Built with FastAPI · Redis · PostgreSQL · k6 <span>STATIC SHOWCASE</span></footer>
+  </main>
+</body>
+</html>
